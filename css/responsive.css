@@ -28,6 +28,15 @@
         font-size: 2rem;
     }
 
+    #scroll-sec-2 .message2 {
+        top: 10%;
+        left: 40%;
+    }
+
+    #scroll-sec-2 .message3 {
+        left: 45%;
+    }
+
     .desc-message {
         width: 50%;
         font-size: 1rem;

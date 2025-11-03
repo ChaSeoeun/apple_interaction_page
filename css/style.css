@@ -56,7 +56,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    top: 40%;
+    transform: translateY(-50%);
     font-size: 4vw;
+    opacity: 0;
 }
 
 .main-message p {
@@ -97,7 +100,7 @@
     display: none;
     position: fixed;
     width: 100%;
-    top: 0;
+    /* top: 0; */
     left: 0;
 }
 
@@ -106,6 +109,16 @@
 #show-scene-2 #scroll-sec-2 .sticky-elem,
 #show-scene-3 #scroll-sec-3 .sticky-elem {
     display: block;
+}
+
+#scroll-sec-2 .message2 {
+    top: 20%;
+    left: 53%;
+}
+
+#scroll-sec-2 .message3 {
+    top: 15%;
+    left: 55%;
 }
 
 .desc-message {
