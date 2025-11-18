@@ -16,8 +16,14 @@
             messageB: document.querySelector('#scroll-sec-0 .main-message.message2'),
             messageC: document.querySelector('#scroll-sec-0 .main-message.message3'),
             messageD: document.querySelector('#scroll-sec-0 .main-message.message4'),
+            canvas: document.querySelector('#video-canvas-0'),
+            context: document.querySelector('#video-canvas-0').getContext('2d'),
+            videoImages: []
         },
         values: {
+            videoImageCount: 479,
+            imageSequence: [1, 479],
+            canvas_opacity: [1, 0, { start: 0.9, end: 1}],
             messageA_opacity_in: [0, 1, { start: 0.1, end: 0.2 }],
             messageA_opacity_out: [1, 0, { start: 0.25, end: 0.3 }],
             messageA_translateY_in: [20, 0, { start: 0.1, end: 0.2 }],
@@ -79,7 +85,7 @@
             pinB_scaleY: [0.5, 1, { start: 0.5, end: 0.55 }],
             pinB_opacity_in: [0, 1, { start: 0.5, end: 0.55 }],
             pinB_opacity_out: [1, 0, { start: 0.58, end: 0.63 }],
-            
+
             pinC_scaleY: [0.5, 1, { start: 0.72, end: 0.77 }],
             pinC_opacity_in: [0, 1, { start: 0.72, end: 0.77 }],
             pinC_opacity_out: [1, 0, { start: 0.85, end: 0.9 }]
@@ -95,6 +101,15 @@
         }
        } 
     ];
+
+    function setCanvasImages(){
+        let imgElem;
+        for (let i = 0; i < sceneInfo[0].values.videoImageCount; i++) {
+            imgElem = new Image();
+            imgElem.src = `./video/img/003/frame_${String(i + 1).padStart(6, '0')}.jpg`;
+            sceneInfo[0].objs.videoImages.push(imgElem);
+        }
+    }
 
     function setLayout() {
         // 각 스크롤 섹션 높이 세팅
@@ -118,6 +133,10 @@
             }
         }
         document.body.setAttribute('id', `show-scene-${currentScene}`);
+
+        const heightRatio = window.innerHeight / 1080;
+        // sceneInfo[0].objs.canvas.style.transform = `scale(${heightRatio})`;
+        sceneInfo[0].objs.canvas.style.transform = `scale(1)`;
     }
 
     function calcValues(values, currentYOffset) {
@@ -157,6 +176,50 @@
         switch (currentScene) {
             case 0:
                 // console.log('0 play');
+
+                let sequence = Math.round(calcValues(values.imageSequence, currentYOffset));
+                objs.context.clearRect(0, 0, objs.canvas.width, objs.canvas.height);
+                objs.canvas.style.opacity = calcValues(values.canvas_opacity, currentYOffset);
+                
+                // 모바일에서 이미지 위치 조정 (오른쪽이 잘리지 않도록)
+                const canvasWidth = objs.canvas.width; // 1920
+                const canvasHeight = objs.canvas.height; // 1080
+                const windowWidth = window.innerWidth;
+                
+                if (windowWidth < 820 && objs.videoImages[sequence] && objs.videoImages[sequence].complete) {
+                    // 모바일
+                    const img = objs.videoImages[sequence];
+                    const imageWidth = img.naturalWidth || img.width || canvasWidth;
+                    const imageHeight = img.naturalHeight || img.height || canvasHeight;
+                    
+                    const imageAspectRatio = imageWidth / imageHeight;
+                    const canvasAspectRatio = canvasWidth / canvasHeight;
+                    
+                    if (canvasAspectRatio < imageAspectRatio) {
+                        const sourceWidth = imageHeight * canvasAspectRatio;
+                        const sourceX = imageWidth - sourceWidth;
+                        
+                        objs.context.drawImage(
+                            img,
+                            sourceX, 0, sourceWidth, imageHeight,
+                            0, 0, canvasWidth, canvasHeight 
+                        );
+                    } else {
+                        // 이미지 중앙 정렬
+                        const drawWidth = canvasHeight * imageAspectRatio;
+                        const drawX = (canvasWidth - drawWidth) / 2;
+                        
+                        objs.context.drawImage(
+                            img,
+                            0, 0, imageWidth, imageHeight,
+                            drawX, 0, drawWidth, canvasHeight
+                        );
+                    }
+                } else if (objs.videoImages[sequence]) {
+                    // PC
+                    objs.context.drawImage(objs.videoImages[sequence], 0, 0, canvasWidth, canvasHeight);
+                }
+
                 // const messageA_Opacity_in = calcValues(values.messageA_Opacity_in, currentYOffset);
                 // const messageA_Opacity_out = calcValues(values.messageA_Opacity_out, currentYOffset);
                 // const messageA_translateY_in = calcValues(values.messageA_translateY_in, currentYOffset);
@@ -279,8 +342,12 @@
         scrollLoop();
     });
     // window.addEventListener('DOMContentLoaded', setLayout);
-    window.addEventListener('load', setLayout);
+    window.addEventListener('load', () =>{
+        sceneInfo[0].objs.context.drawImage(sceneInfo[0].objs.videoImages[0], 0, 0);
+    });
     window.addEventListener('resize', setLayout);
     
+    
     setLayout();
+    setCanvasImages();
 })();
