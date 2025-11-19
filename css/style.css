@@ -71,6 +71,11 @@
     opacity: 0;
 }
 
+.main-message.message1 {
+    color: #fff;
+    text-shadow: 0 0 10px rgb(29, 29, 31);
+}
+
 .main-message p {
     text-align: center;
     font-weight: 800;
@@ -119,7 +124,7 @@
 }
 
 .sticky-elem-canvas canvas {
-    max-width: 2048px;
+    /* max-width: 2048px; */
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -143,9 +148,16 @@
     left: 53%;
 }
 
-#scroll-sec-2 .message3 {
+#show-scene-2 #scroll-sec-2 .sticky-elem.message3 {
     top: 15%;
-    left: 55%;
+    /* left: 55%; */
+    left: inherit;
+    right: 27%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1vw;
 }
 
 .desc-message {
@@ -158,6 +170,13 @@
     width: 1px;
     height: 100px;
     background: rgb(29, 29, 31);
+}
+
+.message3 .pin {
+    width: 100px;
+    height: 1px;
+    background: rgb(29, 29, 31);
+    transform-origin: left center;
 }
 
 .mid-message {
