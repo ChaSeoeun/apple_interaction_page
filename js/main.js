@@ -67,7 +67,8 @@
             pinC: document.querySelector('#scroll-sec-2 .message3 .pin'),
             canvas: document.querySelector('#video-canvas-1'),
             context: document.querySelector('#video-canvas-1').getContext('2d'),
-            videoImages: []
+            videoImages: [],
+            canvasInitialized: false
         },
         values: {
             videoImageCount: 299,
@@ -136,6 +137,21 @@
         for (let i = 0; i < sceneInfo[3].objs.imagesPath.length; i++) {
             imgElem3 = new Image();
             imgElem3.src = sceneInfo[3].objs.imagesPath[i];
+
+            imgElem3.onload = () => {
+                // 첫 번째 이미지 기준으로 canvas 크기 세팅
+                if (i === 0) {
+                    const { canvas } = sceneInfo[3].objs;
+                    const w = imgElem3.naturalWidth || imgElem3.width;
+                    const h = imgElem3.naturalHeight || imgElem3.height;
+    
+                    canvas.width = w;
+                    canvas.height = h;
+    
+                    sceneInfo[3].objs.canvasInitialized = true;
+                }
+            };
+
             sceneInfo[3].objs.images.push(imgElem3);
 
             console.log(sceneInfo[3].objs.images);
@@ -434,7 +450,37 @@
                 }
 
                 objs.canvas.style.transform = `scale(${canvasScaleRatio})`;
-                objs.context.drawImage(objs.images[0], 0, 0);
+
+                const img = objs.images[0];
+                const cw = objs.canvas.width;
+                const ch = objs.canvas.height;
+            
+                const imgRatio = img.width / img.height;
+                const canvasRatio = cw / ch;
+            
+                let drawW, drawH, drawX, drawY;
+            
+                // canvas 이미지 cover
+                if (imgRatio > canvasRatio) {
+                    drawH = ch;
+                    drawW = ch * imgRatio;
+                    drawX = (cw - drawW) / 2;
+                    drawY = 0;
+                } else {
+                    drawW = cw;
+                    drawH = cw / imgRatio;
+                    drawX = 0;
+                    drawY = (ch - drawH) / 2; 
+                }
+            
+                objs.context.clearRect(0, 0, cw, ch);
+                objs.context.drawImage(img, drawX, drawY, drawW, drawH);
+
+                // objs.context.drawImage(objs.images[0], 0, 0);
+                // objs.context.drawImage(
+                //     objs.images[0],
+                //     0, 0, objs.canvas.width, objs.canvas.height
+                // );
 
                 break;
         }
