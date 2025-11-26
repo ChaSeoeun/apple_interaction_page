@@ -73,7 +73,7 @@
         values: {
             videoImageCount: 299,
             imageSequence: [1, 299],
-            canvas_opacity: [1, 0, { start: 0.9, end: 1}],
+            canvas_opacity: [0, 1, { start: 0.02, end: 0.07}],
             messageA_opacity_in: [0, 1, { start: 0.15, end: 0.2 }],
             messageA_opacity_out: [1, 0, { start: 0.3, end: 0.35 }],
             messageA_translateY_in: [20, 0, { start: 0.15, end: 0.2 }],
@@ -115,6 +115,10 @@
                 './image/001/sec-3-img02.jpg'
             ],
             images: [],
+        },
+        values: {
+            rect1X: [0, 0, {start: 0, end: 0}],
+            rect2X: [0, 0, {start: 0, end: 0}]
         }
        } 
     ];
@@ -481,6 +485,21 @@
                 //     objs.images[0],
                 //     0, 0, objs.canvas.width, objs.canvas.height
                 // );
+
+
+                // 캔버스 사이즈에 맞춰 가정한 innerWidth와 innerHeight
+                const recalculatedInnerWidth = window.innerWidth / canvasScaleRatio;
+                const recalculatedInnerHeight = window.innerHeight / canvasScaleRatio;
+
+                const whiteRectWidth = recalculatedInnerWidth * 0.15;
+                values.rect1X[0] = (objs.canvas.width - recalculatedInnerWidth) / 2;
+                values.rect1X[1] = values.rect1X[0] - whiteRectWidth;
+                values.rect2X[0] = values.rect1X[0] + recalculatedInnerWidth - whiteRectWidth;
+                values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
+
+                objs.context.fillRect(values.rect1X[0], 0, parseInt(whiteRectWidth), objs.canvas.height);
+                objs.context.fillRect(values.rect2X[0], 0, parseInt(whiteRectWidth), objs.canvas.height);
+                objs.context.fillStyle = "white";
 
                 break;
         }

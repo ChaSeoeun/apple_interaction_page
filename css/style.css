@@ -75,7 +75,7 @@
     opacity: 0;
 }
 
-.main-message.message1 {
+#scroll-sec-2 .main-message.message1 {
     color: #fff;
     text-shadow: 0 0 10px rgb(29, 29, 31);
 }
