@@ -1,12 +1,14 @@
 (()=> {
 
     let yOffset = 0; // window.pageYOffset 대신 쓸 변수
-	let prevScrollHeight = 0; // 현재 스크롤 위치(yOffset)보다 이전에 위치한 스크롤 섹션들의 스크롤 높이값의 합
+    let prevScrollHeight = 0; // 현재 스크롤 위치(yOffset)보다 이전에 위치한 스크롤 섹션들의 스크롤 높이값의 합
     let currentScene = 0; // 현재 활성화된(눈 앞에 보고 있는) 씬(scroll-section)
     let enterNewScene = false; // 새로운 scene이 시작되는 순간 true
 
     const sceneInfo = [
        {
+        // 1 
+
         type: 'sticky',
         heightNum: 5, // 브라우저 높이의 5배로 scrollHeight 세팅
         scrollHeight: 0,
@@ -46,6 +48,8 @@
         }
        },
        {
+        // 2 
+
         type: 'normal',
         // heightNum: 5,
         scrollHeight: 0,
@@ -74,6 +78,7 @@
             videoImageCount: 299,
             imageSequence: [1, 299],
             canvas_opacity: [0, 1, { start: 0.02, end: 0.07}],
+            canvas_opacity_out: [1, 0, { start: 0.75, end: 0.95}],
             messageA_opacity_in: [0, 1, { start: 0.15, end: 0.2 }],
             messageA_opacity_out: [1, 0, { start: 0.3, end: 0.35 }],
             messageA_translateY_in: [20, 0, { start: 0.15, end: 0.2 }],
@@ -101,6 +106,8 @@
         }
        },
        {
+        // 3 
+
         type: 'sticky',
         heightNum: 5,
         scrollHeight: 0,
@@ -117,8 +124,11 @@
             images: [],
         },
         values: {
-            rect1X: [0, 0, {start: 0, end: 0}],
-            rect2X: [0, 0, {start: 0, end: 0}]
+            rect1X: [0, 0, {start: 0, end: 0.25}],
+            rect2X: [0, 0, {start: 0, end: 0.25}],
+            rectStartY: 0,
+
+            canvas_scale: [1.3, 1.0, { start: 0.05, end: 0.35 }]
         }
        } 
     ];
@@ -139,7 +149,8 @@
         }
 
         for (let i = 0; i < sceneInfo[3].objs.imagesPath.length; i++) {
-            imgElem3 = new Image();
+            // ★ let 추가해서 전역 오염 방지
+            let imgElem3 = new Image();
             imgElem3.src = sceneInfo[3].objs.imagesPath[i];
 
             imgElem3.onload = () => {
@@ -153,12 +164,15 @@
                     canvas.height = h;
     
                     sceneInfo[3].objs.canvasInitialized = true;
+                    // 캔버스 실제 크기가 확정된 뒤에 레이아웃/rect 계산을 다시 맞춰야 함
+                    setLayout();
+                    scrollLoop();
                 }
             };
 
             sceneInfo[3].objs.images.push(imgElem3);
 
-            console.log(sceneInfo[3].objs.images);
+            // console.log(sceneInfo[3].objs.images);
         }
     }
 
@@ -298,11 +312,6 @@
                     objs.context.drawImage(objs.videoImages[sequence], 0, 0, canvasWidth, canvasHeight);
                 }
 
-                // const messageA_Opacity_in = calcValues(values.messageA_Opacity_in, currentYOffset);
-                // const messageA_Opacity_out = calcValues(values.messageA_Opacity_out, currentYOffset);
-                // const messageA_translateY_in = calcValues(values.messageA_translateY_in, currentYOffset);
-                // const messageA_translateY_out = calcValues(values.messageA_translateY_out, currentYOffset);
-
                 if (scrollRatio <= 0.22) {
                     // in
                     objs.messageA.style.opacity = calcValues(values.messageA_opacity_in, currentYOffset);
@@ -350,7 +359,15 @@
             case 2:
                 let sequence2 = Math.round(calcValues(values.imageSequence, currentYOffset));
                 objs.context.clearRect(0, 0, objs.canvas.width, objs.canvas.height);
-                objs.canvas.style.opacity = calcValues(values.canvas_opacity, currentYOffset);
+                if (scrollRatio <= 0.1) {
+                    // in
+                    objs.canvas.style.opacity = calcValues(values.canvas_opacity, currentYOffset);
+                } else if (scrollRatio >= 0.9) {
+                    // out
+                    objs.canvas.style.opacity = calcValues(values.canvas_opacity_out, currentYOffset);
+                } else {
+                    objs.canvas.style.opacity = 1;
+                }
                 
                 // 모바일에서 이미지 위치 조정 (오른쪽이 잘리지 않도록)
                 const canvasWidth2 = objs.canvas.width; // 1920
@@ -436,72 +453,189 @@
                     objs.pinC.style.opacity = calcValues(values.pinC_opacity_out, currentYOffset);
                 }
     
-                break;
-            case 3:
-                // console.log('3 play');
-                // 가로/세로 모두 꽉 차게 하기 위해 여기서 세팅(계산 필요)
-                const widthRatio = window.innerWidth / objs.canvas.width;
-                const heightRatio = window.innerHeight / objs.canvas.height;
+                // currentScene 3 에서 쓰는 캔버스 미리 그려주기 시작
+
+                if (scrollRatio > 0.9) {
+                    const objs = sceneInfo[3].objs; 
+                    const values = sceneInfo[3].values;
+
+                    const { canvas, context, images } = objs;
+                    if (!images[0]) return;
                 
-                let canvasScaleRatio;
+                    const cw = canvas.width;
+                    const ch = canvas.height;
+                
+                    const widthRatio = window.innerWidth / cw;
+                    const heightRatio = window.innerHeight / ch;
+                    const baseScale = Math.max(widthRatio, heightRatio);
+                
+                    // scene3 시작값으로 고정 스케일 적용
+                    const scrollScale = values.canvas_scale[0];
+                
+                    // 최종 scale
+                    const finalScale = baseScale * scrollScale;
+                    canvas.style.transform = `scale(${finalScale})`;
+                    canvas.style.transformOrigin = 'center top'; // 확대 시 위에서 아래로 퍼지도록
+                
+                    // image cover 렌더링
+                    const img = images[0];
+                    const imgRatio = img.width / img.height;
+                    const canvasRatio = cw / ch;
+                
+                    let drawW, drawH, drawX, drawY;
+                
+                    if (imgRatio > canvasRatio) {
+                        drawH = ch;
+                        drawW = drawH * imgRatio;
+                        drawX = (cw - drawW) / 2;
+                        drawY = 0;
+                    } else {
+                        drawW = cw;
+                        drawH = drawW / imgRatio;
+                        drawX = 0;
+                        drawY = (ch - drawH) / 2;
+                    }
+                
+                    // 화면(100vh) 밖으로 너무 커지지 않도록 안전 클램프
+                    const safeScale = Math.max(0.0001, finalScale); // 0 나눗셈 방지
+                    const maxDrawH = (window.innerHeight / safeScale) * 1.4;
+                    if (Number.isFinite(maxDrawH) && maxDrawH > 0 && drawH > maxDrawH) {
+                        drawH = maxDrawH;
+                        drawW = drawH * imgRatio;
+                        drawX = (cw - drawW) / 2;
+                        drawY = (ch - drawH) / 2;
+                    }
 
-                if (widthRatio <= heightRatio) {
-                    // 캔버스보다 브라우저 창이 세로로 긴 경우
-                    canvasScaleRatio = heightRatio;
-                } else {
-                    // 캔버스보다 브라우저 창이 가로로 긴 경우
-                    canvasScaleRatio = widthRatio;
+                    context.clearRect(0, 0, cw, ch);
+                    context.drawImage(img, drawX, drawY, drawW, drawH);
+                
+                    const recalculatedW = document.body.offsetWidth / finalScale;
+                    const recalculatedH = window.innerHeight / finalScale;
+                
+                
+                    // 두 white rect 위치 계산
+                    const whiteRectWidth = recalculatedW * 0.18;
+                
+                    values.rect1X[0] = (cw - recalculatedW) / 2;
+                    values.rect1X[1] = values.rect1X[0] - whiteRectWidth;
+                
+                    values.rect2X[0] = (cw - recalculatedW) / 2 + recalculatedW - whiteRectWidth;
+                    values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
+                
+                    context.fillStyle = 'white';
+                
+                    context.fillRect(
+                        parseInt(values.rect1X[0]),
+                        0,
+                        whiteRectWidth,
+                        ch
+                    );
+                
+                    context.fillRect(
+                        parseInt(values.rect2X[0]),
+                        0,
+                        whiteRectWidth,
+                        ch
+                    );
                 }
-
-                objs.canvas.style.transform = `scale(${canvasScaleRatio})`;
-
-                const img = objs.images[0];
-                const cw = objs.canvas.width;
-                const ch = objs.canvas.height;
-            
-                const imgRatio = img.width / img.height;
-                const canvasRatio = cw / ch;
-            
-                let drawW, drawH, drawX, drawY;
-            
-                // canvas 이미지 cover
-                if (imgRatio > canvasRatio) {
-                    drawH = ch;
-                    drawW = ch * imgRatio;
-                    drawX = (cw - drawW) / 2;
-                    drawY = 0;
-                } else {
-                    drawW = cw;
-                    drawH = cw / imgRatio;
-                    drawX = 0;
-                    drawY = (ch - drawH) / 2; 
-                }
-            
-                objs.context.clearRect(0, 0, cw, ch);
-                objs.context.drawImage(img, drawX, drawY, drawW, drawH);
-
-                // objs.context.drawImage(objs.images[0], 0, 0);
-                // objs.context.drawImage(
-                //     objs.images[0],
-                //     0, 0, objs.canvas.width, objs.canvas.height
-                // );
-
-
-                // 캔버스 사이즈에 맞춰 가정한 innerWidth와 innerHeight
-                const recalculatedInnerWidth = window.innerWidth / canvasScaleRatio;
-                const recalculatedInnerHeight = window.innerHeight / canvasScaleRatio;
-
-                const whiteRectWidth = recalculatedInnerWidth * 0.15;
-                values.rect1X[0] = (objs.canvas.width - recalculatedInnerWidth) / 2;
-                values.rect1X[1] = values.rect1X[0] - whiteRectWidth;
-                values.rect2X[0] = values.rect1X[0] + recalculatedInnerWidth - whiteRectWidth;
-                values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
-
-                objs.context.fillRect(values.rect1X[0], 0, parseInt(whiteRectWidth), objs.canvas.height);
-                objs.context.fillRect(values.rect2X[0], 0, parseInt(whiteRectWidth), objs.canvas.height);
-                objs.context.fillStyle = "white";
 
                 break;
+
+                case 3:
+                    const { canvas, context, images } = objs;
+                    if (!images[0]) return;
+                
+                    const cw = canvas.width;
+                    const ch = canvas.height;
+                
+                    const widthRatio = window.innerWidth / cw;
+                    const heightRatio = window.innerHeight / ch;
+                    const baseScale = Math.max(widthRatio, heightRatio);
+                
+                    const scrollScale = calcValues(values.canvas_scale, currentYOffset);
+                
+                    // 최종 scale
+                    const finalScale = baseScale * scrollScale;
+                    canvas.style.transform = `scale(${finalScale})`;
+                    canvas.style.transformOrigin = 'center top'; // 확대 시 위에서 아래로 퍼지도록
+                
+                    // image cover 렌더링
+                    const img = images[0];
+                    const imgRatio = img.width / img.height;
+                    const canvasRatio = cw / ch;
+                
+                    let drawW, drawH, drawX, drawY;
+                
+                    if (imgRatio > canvasRatio) {
+                        drawH = ch;
+                        drawW = drawH * imgRatio;
+                        drawX = (cw - drawW) / 2;
+                        drawY = 0;
+                    } else {
+                        drawW = cw;
+                        drawH = drawW / imgRatio;
+                        drawX = 0;
+                        drawY = (ch - drawH) / 2;
+                    }
+                
+                    // 화면(100vh) 밖으로 너무 커지지 않도록 안전 클램프
+                    const safeScale = Math.max(0.0001, finalScale); // 0 나눗셈 방지
+                    const maxDrawH = (window.innerHeight / safeScale) * 1.4;
+                    if (Number.isFinite(maxDrawH) && maxDrawH > 0 && drawH > maxDrawH) {
+                        drawH = maxDrawH;
+                        drawW = drawH * imgRatio;
+                        drawX = (cw - drawW) / 2;
+                        drawY = (ch - drawH) / 2;
+                    }
+
+                    context.clearRect(0, 0, cw, ch);
+                    context.drawImage(img, drawX, drawY, drawW, drawH);
+                
+                    const recalculatedW = document.body.offsetWidth / finalScale;
+                    const recalculatedH = window.innerHeight / finalScale;
+                
+                    if (values.rectStartY === 0) {
+                        const absTop = canvas.getBoundingClientRect().top + window.pageYOffset;
+                        const topInScene = absTop - prevScrollHeight;
+                        
+                        values.rectStartY = topInScene;
+
+                        const startRatio = (window.innerWidth / 2) / scrollHeight;
+                        const endRatio = Math.min(1, Math.max(0.2, topInScene / scrollHeight));
+
+                        values.rect1X[2].start = startRatio;
+                        values.rect2X[2].start = startRatio;
+                        values.rect1X[2].end = endRatio;
+                        values.rect2X[2].end = endRatio;
+                    }
+                
+                    // 두 white rect 위치 계산
+                    const whiteRectWidth = recalculatedW * 0.18;
+                
+                    values.rect1X[0] = (cw - recalculatedW) / 2;
+                    values.rect1X[1] = values.rect1X[0] - whiteRectWidth;
+                
+                    values.rect2X[0] = (cw - recalculatedW) / 2 + recalculatedW - whiteRectWidth;
+                    values.rect2X[1] = values.rect2X[0] + whiteRectWidth;
+                
+                    context.fillStyle = 'white';
+                
+                    context.fillRect(
+                        parseInt(calcValues(values.rect1X, currentYOffset)),
+                        0,
+                        whiteRectWidth,
+                        ch
+                    );
+                
+                    context.fillRect(
+                        parseInt(calcValues(values.rect2X, currentYOffset)),
+                        0,
+                        whiteRectWidth,
+                        ch
+                    );
+                
+                    break;
+                
         }
 
     }
